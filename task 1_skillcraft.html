@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Caesar Cipher</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #050a0e;
+      --panel: #0b1520;
+      --border: #1a3a4a;
+      --accent: #00e5ff;
+      --accent2: #ff6b00;
+      --text: #c8e6f0;
+      --dim: #4a7a8a;
+      --success: #00ff9d;
+      --font-mono: 'Share Tech Mono', monospace;
+      --font-display: 'Orbitron', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      overflow-x: hidden;
+    }
+
+    /* Animated grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Radial glow */
+    body::after {
+      content: '';
+      position: fixed;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 500px;
+      background: radial-gradient(ellipse, rgba(0,229,255,0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 780px;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 48px;
+      animation: fadeDown 0.8s ease both;
+    }
+
+    .header-label {
+      font-size: 11px;
+      letter-spacing: 6px;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      opacity: 0.7;
+    }
+
+    h1 {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 6vw, 3.5rem);
+      font-weight: 900;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: #fff;
+      text-shadow: 0 0 30px rgba(0,229,255,0.4), 0 0 60px rgba(0,229,255,0.1);
+      line-height: 1;
+    }
+
+    h1 span { color: var(--accent); }
+
+    .subtitle {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--dim);
+      letter-spacing: 2px;
+    }
+
+    /* Shift dial row */
+    .shift-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 32px;
+      animation: fadeUp 0.8s 0.2s ease both;
+    }
+
+    .shift-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .shift-label {
+      font-family: var(--font-display);
+      font-size: 11px;
+      letter-spacing: 3px;
+      color: var(--dim);
+      text-transform: uppercase;
+    }
+
+    /* Direct number input */
+    input[type=number]#shiftInput {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      width: 80px;
+      text-align: center;
+      outline: none;
+      padding: 4px 0;
+      text-shadow: 0 0 16px rgba(0,229,255,0.5);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      -moz-appearance: textfield;
+    }
+    input[type=number]#shiftInput::-webkit-inner-spin-button,
+    input[type=number]#shiftInput::-webkit-outer-spin-button { -webkit-appearance: none; }
+    input[type=number]#shiftInput:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(0,229,255,0.25);
+    }
+
+    /* Preset buttons */
+    .preset-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn-preset {
+      font-family: var(--font-display);
+      font-size: 9px;
+      letter-spacing: 1px;
+      padding: 5px 12px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--dim);
+      border-radius: 2px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-preset:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 0 10px rgba(0,229,255,0.15);
+    }
+    .btn-preset.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(0,229,255,0.07);
+      box-shadow: 0 0 10px rgba(0,229,255,0.15);
+    }
+
+    .btn-shift {
+      width: 40px; height: 40px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      font-size: 1.4rem;
+      cursor: pointer;
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+      font-family: var(--font-mono);
+    }
+    .btn-shift:hover {
+      background: rgba(0,229,255,0.1);
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(0,229,255,0.3);
+    }
+    .btn-shift:active { transform: scale(0.94); }
+
+    /* Slider */
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 160px;
+      height: 4px;
+      background: linear-gradient(to right, var(--accent) 0%, var(--accent) calc(var(--pct, 50%) ), var(--border) calc(var(--pct, 50%)));
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 10px rgba(0,229,255,0.8);
+      border: 2px solid var(--bg);
+      transition: transform 0.15s;
+    }
+    input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+    /* Main card */
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 32px;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+      animation: fadeUp 0.8s 0.3s ease both;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+
+    .card-corner {
+      position: absolute;
+      width: 14px; height: 14px;
+      border-color: var(--accent);
+      border-style: solid;
+      opacity: 0.6;
+    }
+    .card-corner.tl { top: 6px; left: 6px; border-width: 2px 0 0 2px; }
+    .card-corner.tr { top: 6px; right: 6px; border-width: 2px 2px 0 0; }
+    .card-corner.bl { bottom: 6px; left: 6px; border-width: 0 0 2px 2px; }
+    .card-corner.br { bottom: 6px; right: 6px; border-width: 0 2px 2px 0; }
+
+    /* Textarea section */
+    .field-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 580px) {
+      .field-group { grid-template-columns: 1fr; }
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .field-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .field-label {
+      font-family: var(--font-display);
+      font-size: 9px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--dim);
+    }
+
+    .field-label span {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    .field-label.encrypt span { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+    .field-label.decrypt span { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); }
+
+    .char-count {
+      font-size: 10px;
+      color: var(--dim);
+      opacity: 0.6;
+    }
+
+    textarea {
+      width: 100%;
+      height: 160px;
+      background: rgba(0,0,0,0.4);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      line-height: 1.6;
+      padding: 14px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(0,229,255,0.15), inset 0 0 20px rgba(0,229,255,0.03);
+    }
+    textarea.output {
+      color: var(--success);
+      cursor: default;
+      border-color: rgba(0,255,157,0.2);
+    }
+    textarea.output:focus {
+      border-color: rgba(0,255,157,0.4);
+      box-shadow: 0 0 0 1px rgba(0,255,157,0.1);
+    }
+    textarea::placeholder { color: var(--dim); opacity: 0.5; }
+
+    /* Divider arrow */
+    .divider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--dim);
+      font-size: 22px;
+      padding-top: 40px;
+    }
+
+    /* Buttons row */
+    .btn-row {
+      display: flex;
+      gap: 14px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      font-family: var(--font-display);
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      padding: 12px 28px;
+      border: 1px solid;
+      border-radius: 2px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.2s;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: currentColor;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .btn:hover::before { opacity: 0.08; }
+    .btn:active { transform: translateY(1px); }
+
+    .btn-encrypt {
+      background: transparent;
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 0 14px rgba(0,229,255,0.1);
+    }
+    .btn-encrypt:hover { box-shadow: 0 0 20px rgba(0,229,255,0.25); }
+
+    .btn-decrypt {
+      background: transparent;
+      border-color: var(--accent2);
+      color: var(--accent2);
+      box-shadow: 0 0 14px rgba(255,107,0,0.1);
+    }
+    .btn-decrypt:hover { box-shadow: 0 0 20px rgba(255,107,0,0.25); }
+
+    .btn-copy {
+      background: transparent;
+      border-color: var(--success);
+      color: var(--success);
+      margin-left: auto;
+    }
+    .btn-copy:hover { box-shadow: 0 0 16px rgba(0,255,157,0.2); }
+
+    .btn-clear {
+      background: transparent;
+      border-color: var(--border);
+      color: var(--dim);
+    }
+
+    /* Alphabet strip */
+    .alpha-strip {
+      margin-top: 20px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 20px 24px;
+      animation: fadeUp 0.8s 0.5s ease both;
+    }
+
+    .strip-label {
+      font-family: var(--font-display);
+      font-size: 9px;
+      letter-spacing: 3px;
+      color: var(--dim);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .alpha-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .alpha-row {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .alpha-cell {
+      width: 26px; height: 26px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px;
+      border-radius: 2px;
+      transition: all 0.15s;
+    }
+
+    .alpha-row.original .alpha-cell {
+      background: rgba(0,229,255,0.05);
+      border: 1px solid rgba(0,229,255,0.15);
+      color: var(--accent);
+    }
+
+    .alpha-row.shifted .alpha-cell {
+      background: rgba(255,107,0,0.05);
+      border: 1px solid rgba(255,107,0,0.15);
+      color: var(--accent2);
+    }
+
+    .alpha-row-label {
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: var(--dim);
+      width: 60px;
+      display: flex;
+      align-items: center;
+      opacity: 0.6;
+    }
+
+    /* Notification */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--success);
+      color: #000;
+      font-family: var(--font-display);
+      font-size: 10px;
+      letter-spacing: 3px;
+      padding: 10px 24px;
+      border-radius: 2px;
+      transition: transform 0.3s ease;
+      z-index: 100;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* Animations */
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .pulse {
+      animation: pulse 0.3s ease;
+    }
+    @keyframes pulse {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.06); }
+      100% { transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="header-label">// cryptographic tool //</div>
+    <h1>Caesar <span>Cipher</span></h1>
+    <div class="subtitle">ROT-N · SYMMETRIC · SUBSTITUTION</div>
+  </header>
+
+  <!-- Shift Control -->
+  <div class="shift-section">
+    <div class="shift-row">
+      <span class="shift-label">Shift</span>
+      <button class="btn-shift" id="btnMinus">−</button>
+      <input type="number" id="shiftInput" min="1" max="25" value="7" />
+      <button class="btn-shift" id="btnPlus">+</button>
+      <input type="range" id="shiftSlider" min="1" max="25" value="7" style="--pct: 25%"/>
+      <span class="shift-label">/ 25</span>
+    </div>
+    <div class="preset-row">
+      <span class="shift-label" style="font-size:9px;">Quick:</span>
+      <button class="btn-preset" data-val="1">ROT‑1</button>
+      <button class="btn-preset" data-val="3">ROT‑3</button>
+      <button class="btn-preset active" data-val="7">ROT‑7</button>
+      <button class="btn-preset" data-val="13">ROT‑13</button>
+      <button class="btn-preset" data-val="18">ROT‑18</button>
+      <button class="btn-preset" data-val="25">ROT‑25</button>
+    </div>
+  </div>
+
+  <!-- Main Card -->
+  <div class="card">
+    <div class="card-corner tl"></div>
+    <div class="card-corner tr"></div>
+    <div class="card-corner bl"></div>
+    <div class="card-corner br"></div>
+
+    <div class="field-group">
+      <!-- Input -->
+      <div class="field">
+        <div class="field-header">
+          <div class="field-label encrypt"><span></span>Input Text</div>
+          <div class="char-count" id="inputCount">0 chars</div>
+        </div>
+        <textarea id="inputText" placeholder="Type or paste your message here..."></textarea>
+      </div>
+
+      <!-- Output -->
+      <div class="field">
+        <div class="field-header">
+          <div class="field-label decrypt"><span></span>Output Text</div>
+          <div class="char-count" id="outputCount">0 chars</div>
+        </div>
+        <textarea id="outputText" class="output" readonly placeholder="Result will appear here..."></textarea>
+      </div>
+    </div>
+
+    <!-- Button Row -->
+    <div class="btn-row">
+      <button class="btn btn-encrypt" id="btnEncrypt">⟶ Encrypt</button>
+      <button class="btn btn-decrypt" id="btnDecrypt">⟵ Decrypt</button>
+      <button class="btn btn-clear" id="btnClear">✕ Clear</button>
+      <button class="btn btn-copy" id="btnCopy">⎘ Copy</button>
+    </div>
+  </div>
+
+  <!-- Alphabet Strip -->
+  <div class="alpha-strip">
+    <div class="strip-label">// Shift Mapping — A→Z</div>
+    <div class="alpha-rows">
+      <div style="display:flex; gap:4px; align-items:center;">
+        <div class="alpha-row-label">Plain</div>
+        <div class="alpha-row original" id="alphaOriginal"></div>
+      </div>
+      <div style="display:flex; gap:4px; align-items:center;">
+        <div class="alpha-row-label">Cipher</div>
+        <div class="alpha-row shifted" id="alphaShifted"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">COPIED TO CLIPBOARD</div>
+
+<script>
+  const alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  let shift = 7;
+
+  /* ---- Elements ---- */
+  const shiftInput   = document.getElementById('shiftInput');
+  const shiftSlider  = document.getElementById('shiftSlider');
+  const inputText    = document.getElementById('inputText');
+  const outputText   = document.getElementById('outputText');
+  const inputCount   = document.getElementById('inputCount');
+  const outputCount  = document.getElementById('outputCount');
+  const alphaOrig    = document.getElementById('alphaOriginal');
+  const alphaShift   = document.getElementById('alphaShifted');
+  const presets      = document.querySelectorAll('.btn-preset');
+
+  /* ---- Cipher Logic ---- */
+  function caesarEncrypt(text, n) {
+    return text.split('').map(ch => {
+      const code = ch.charCodeAt(0);
+      if (code >= 65 && code <= 90) return String.fromCharCode((code - 65 + n) % 26 + 65);
+      if (code >= 97 && code <= 122) return String.fromCharCode((code - 97 + n) % 26 + 97);
+      return ch;
+    }).join('');
+  }
+
+  function caesarDecrypt(text, n) {
+    return caesarEncrypt(text, 26 - (n % 26));
+  }
+
+  /* ---- Shift update ---- */
+  function updateShift(val, source) {
+    shift = Math.max(1, Math.min(25, parseInt(val) || 1));
+    if (source !== 'input')  shiftInput.value  = shift;
+    if (source !== 'slider') shiftSlider.value = shift;
+    shiftSlider.style.setProperty('--pct', ((shift - 1) / 24 * 100) + '%');
+    // Update active preset
+    presets.forEach(b => {
+      b.classList.toggle('active', parseInt(b.dataset.val) === shift);
+    });
+    renderAlpha();
+  }
+
+  /* ---- Alphabet strip ---- */
+  function renderAlpha() {
+    alphaOrig.innerHTML  = alpha.map(l => `<div class="alpha-cell">${l}</div>`).join('');
+    alphaShift.innerHTML = alpha.map((_, i) => `<div class="alpha-cell">${alpha[(i + shift) % 26]}</div>`).join('');
+  }
+
+  /* ---- Event Listeners ---- */
+  document.getElementById('btnMinus').addEventListener('click', () => updateShift(shift - 1));
+  document.getElementById('btnPlus').addEventListener('click',  () => updateShift(shift + 1));
+
+  shiftInput.addEventListener('input', e => updateShift(e.target.value, 'input'));
+  shiftInput.addEventListener('blur',  e => { if (!e.target.value) updateShift(1); });
+  shiftSlider.addEventListener('input', e => updateShift(e.target.value, 'slider'));
+
+  presets.forEach(btn => {
+    btn.addEventListener('click', () => updateShift(parseInt(btn.dataset.val)));
+  });
+
+  inputText.addEventListener('input', () => {
+    inputCount.textContent = inputText.value.length + ' chars';
+  });
+
+  document.getElementById('btnEncrypt').addEventListener('click', () => {
+    if (!inputText.value.trim()) return;
+    const result = caesarEncrypt(inputText.value, shift);
+    outputText.value = result;
+    outputCount.textContent = result.length + ' chars';
+  });
+
+  document.getElementById('btnDecrypt').addEventListener('click', () => {
+    if (!inputText.value.trim()) return;
+    const result = caesarDecrypt(inputText.value, shift);
+    outputText.value = result;
+    outputCount.textContent = result.length + ' chars';
+  });
+
+  document.getElementById('btnClear').addEventListener('click', () => {
+    inputText.value = '';
+    outputText.value = '';
+    inputCount.textContent = '0 chars';
+    outputCount.textContent = '0 chars';
+  });
+
+  document.getElementById('btnCopy').addEventListener('click', () => {
+    if (!outputText.value) return;
+    navigator.clipboard.writeText(outputText.value).then(() => {
+      const toast = document.getElementById('toast');
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    });
+  });
+
+  /* ---- Init ---- */
+  updateShift(7);
+</script>
+</body>
+</html>
