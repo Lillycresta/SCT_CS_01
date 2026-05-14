@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PIXLCRYPT — Image Encryptor</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Syne:wght@400;700;800&display=swap');
+ 
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --border: #334155;
+    --accent: #38bdf8;
+    --accent2: #a78bfa;
+    --accent3: #f97316;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --grid: rgba(56,189,248,0.08);
+  }
+ 
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+ 
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+ 
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+ 
+  .scanline {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.4;
+    animation: scan 4s linear infinite;
+    z-index: 100;
+    pointer-events: none;
+  }
+ 
+  @keyframes scan {
+    0% { top: 0; }
+    100% { top: 100vh; }
+  }
+ 
+  header {
+    position: relative;
+    z-index: 1;
+    padding: 2.5rem 3rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 1.5rem;
+  }
+ 
+  .logo {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--accent);
+    text-shadow: 0 0 30px rgba(0,255,159,0.4);
+  }
+ 
+  .logo span { color: var(--accent2); }
+ 
+  .tagline {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+ 
+  .main {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 0;
+    min-height: calc(100vh - 90px);
+  }
+ 
+  /* ── Canvas Area ── */
+  .canvas-area {
+    padding: 2.5rem 3rem;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+ 
+  .canvas-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    flex: 1;
+  }
+ 
+  .canvas-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+ 
+  .panel-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+ 
+  .panel-label::before {
+    content: '';
+    display: inline-block;
+    width: 6px; height: 6px;
+    background: var(--accent);
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  }
+ 
+  .panel-label.output::before { background: var(--accent2); }
+ 
+  .canvas-wrapper {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+    cursor: pointer;
+  }
+ 
+  .canvas-wrapper:hover { border-color: var(--accent); }
+  .canvas-wrapper.has-image { cursor: default; }
+ 
+  canvas {
+    max-width: 100%;
+    max-height: 400px;
+    display: none;
+    image-rendering: pixelated;
+  }
+ 
+  .canvas-wrapper.has-image canvas { display: block; }
+ 
+  .drop-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 2rem;
+    text-align: center;
+  }
+ 
+  .drop-icon {
+    font-size: 3rem;
+    opacity: 0.15;
+    filter: grayscale(1);
+  }
+ 
+  .drop-text {
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-family: 'Share Tech Mono', monospace;
+    line-height: 1.6;
+  }
+ 
+  .drop-btn {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.5rem 1.2rem;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s;
+  }
+ 
+  .drop-btn:hover { background: var(--accent); color: var(--bg); }
+ 
+  .canvas-wrapper.drag-over { border-color: var(--accent); background: rgba(0,255,159,0.04); }
+ 
+  /* ── Sidebar ── */
+  .sidebar {
+    padding: 2.5rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    overflow-y: auto;
+  }
+ 
+  .section-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+ 
+  /* ── Operation Cards ── */
+  .ops-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+ 
+  .op-card {
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+ 
+  .op-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--muted);
+    transition: background 0.2s;
+  }
+ 
+  .op-card:hover { border-color: rgba(0,255,159,0.3); }
+  .op-card:hover::before { background: var(--accent); }
+  .op-card.active { border-color: var(--accent); background: rgba(0,255,159,0.04); }
+  .op-card.active::before { background: var(--accent); }
+ 
+  .op-name {
+    font-weight: 700;
+    font-size: 0.85rem;
+    margin-bottom: 0.2rem;
+    color: var(--text);
+  }
+ 
+  .op-desc {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+ 
+  /* ── Key Input ── */
+  .key-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+ 
+  .key-field {
+    display: flex;
+    gap: 0.5rem;
+  }
+ 
+  .key-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.9rem;
+    padding: 0.75rem 1rem;
+    border-radius: 2px;
+    outline: none;
+    transition: border-color 0.2s;
+    letter-spacing: 0.1em;
+  }
+ 
+  .key-input:focus { border-color: var(--accent); }
+ 
+  .rand-btn {
+    padding: 0.75rem 0.9rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 2px;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+  }
+ 
+  .rand-btn:hover { border-color: var(--accent3); color: var(--accent3); }
+ 
+  .key-hint {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+ 
+  /* ── Buttons ── */
+  .action-btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+ 
+  .btn {
+    padding: 0.9rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    font-weight: bold;
+  }
+ 
+  .btn-encrypt {
+    background: var(--accent);
+    color: var(--bg);
+  }
+ 
+  .btn-encrypt:hover { box-shadow: 0 0 20px rgba(0,255,159,0.4); }
+ 
+  .btn-decrypt {
+    background: var(--accent2);
+    color: white;
+  }
+ 
+  .btn-decrypt:hover { box-shadow: 0 0 20px rgba(255,60,111,0.4); }
+ 
+  .btn-download {
+    grid-column: span 2;
+    background: transparent;
+    border: 1px solid var(--accent3);
+    color: var(--accent3);
+  }
+ 
+  .btn-download:hover { background: var(--accent3); color: white; }
+ 
+  .btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    box-shadow: none !important;
+  }
+ 
+  /* ── Status ── */
+  .status-bar {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    min-height: 2.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+ 
+  .status-bar.ok { color: var(--accent); border-color: rgba(0,255,159,0.3); }
+  .status-bar.err { color: var(--accent2); border-color: rgba(255,60,111,0.3); }
+  .status-bar.busy { color: var(--accent3); border-color: rgba(123,92,255,0.3); }
+ 
+  .status-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+ 
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+ 
+  .status-bar:not(.busy) .status-dot { animation: none; }
+ 
+  /* ── Info Panel ── */
+  .info-chips {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+ 
+  .chip {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    padding: 0.25rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+ 
+  #fileInfo { display: none; }
+ 
+  /* ── Slider ── */
+  .param-section { display: none; }
+  .param-section.visible { display: block; }
+ 
+  .param-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+  }
+ 
+  .param-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+ 
+  input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 2px;
+    background: var(--border);
+    outline: none;
+    border-radius: 1px;
+  }
+ 
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+ 
+  .param-val {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    min-width: 2rem;
+    text-align: right;
+  }
+ 
+  /* Drag overlay */
+  .canvas-wrapper.drag-over::after {
+    content: 'DROP IMAGE';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    background: rgba(0,255,159,0.07);
+  }
+ 
+  input[type=file] { display: none; }
+ 
+  @media (max-width: 900px) {
+    .main { grid-template-columns: 1fr; }
+    .canvas-row { grid-template-columns: 1fr; }
+    header { padding: 1.5rem; }
+    .canvas-area { padding: 1.5rem; }
+    .sidebar { border-top: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+ 
+<div class="scanline"></div>
+ 
+<header>
+  <div class="logo">PIXL<span>CRYPT</span></div>
+  <div class="tagline">// pixel-level image encryption engine</div>
+</header>
+ 
+<div class="main">
+ 
+  <!-- Canvas Area -->
+  <div class="canvas-area">
+    <div class="canvas-row">
+      <!-- Input -->
+      <div class="canvas-panel">
+        <div class="panel-label">Input Image</div>
+        <div class="canvas-wrapper" id="inputWrapper">
+          <div class="drop-zone" id="dropZone">
+            <div class="drop-icon">🖼️</div>
+            <div class="drop-text">Drag & drop an image<br>or click to browse</div>
+            <button class="drop-btn" onclick="document.getElementById('fileInput').click()">Browse File</button>
+          </div>
+          <canvas id="inputCanvas"></canvas>
+        </div>
+        <div class="info-chips" id="fileInfo">
+          <div class="chip" id="chipSize">—</div>
+          <div class="chip" id="chipType">—</div>
+          <div class="chip" id="chipDims">—</div>
+        </div>
+      </div>
+ 
+      <!-- Output -->
+      <div class="canvas-panel">
+        <div class="panel-label output">Output Image</div>
+        <div class="canvas-wrapper" id="outputWrapper">
+          <div class="drop-zone">
+            <div class="drop-icon" style="opacity:0.06">⚙️</div>
+            <div class="drop-text">Processed image<br>will appear here</div>
+          </div>
+          <canvas id="outputCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+ 
+    <div class="status-bar" id="statusBar">
+      <div class="status-dot"></div>
+      <span id="statusText">Ready — load an image to begin</span>
+    </div>
+  </div>
+ 
+  <!-- Sidebar -->
+  <div class="sidebar">
+ 
+    <div>
+      <div class="section-title">Operation</div>
+      <div class="ops-grid" id="opsGrid">
+        <div class="op-card active" data-op="xor">
+          <div class="op-name">XOR Cipher</div>
+          <div class="op-desc">Each pixel channel XOR'd with a key-derived value. Symmetric — same key encrypts & decrypts.</div>
+        </div>
+        <div class="op-card" data-op="invert">
+          <div class="op-name">Invert + Offset</div>
+          <div class="op-desc">Inverts pixel values (255−x) then shifts by key modulo. Simple but visually dramatic.</div>
+        </div>
+        <div class="op-card" data-op="shuffle">
+          <div class="op-name">Channel Shuffle</div>
+          <div class="op-desc">Permutes RGB channels per pixel based on key. Decrypt reverses the permutation.</div>
+        </div>
+        <div class="op-card" data-op="scramble">
+          <div class="op-name">Row Scramble</div>
+          <div class="op-desc">Shuffles pixel rows using a seeded PRNG derived from the key. Reverses on decrypt.</div>
+        </div>
+        <div class="op-card" data-op="bitshift">
+          <div class="op-name">Bit Rotation</div>
+          <div class="op-desc">Rotates each channel's bits by a key-derived shift amount. Fully reversible.</div>
+        </div>
+      </div>
+    </div>
+ 
+    <div>
+      <div class="section-title">Encryption Key</div>
+      <div class="key-section">
+        <div class="key-field">
+          <input class="key-input" id="keyInput" type="text" placeholder="Enter key..." maxlength="32" value="pixlcrypt42">
+          <button class="rand-btn" id="randBtn" title="Generate random key">⚄</button>
+        </div>
+        <div class="key-hint">Any string or number. Must match<br>for successful decryption.</div>
+ 
+        <!-- Per-op params -->
+        <div class="param-section" id="paramShift">
+          <div class="param-row">
+            <span class="param-label">Bit shift</span>
+            <input type="range" id="sliderShift" min="1" max="7" value="3">
+            <span class="param-val" id="valShift">3</span>
+          </div>
+        </div>
+      </div>
+    </div>
+ 
+    <div>
+      <div class="section-title">Actions</div>
+      <div class="action-btns">
+        <button class="btn btn-encrypt" id="btnEncrypt" disabled>Encrypt</button>
+        <button class="btn btn-decrypt" id="btnDecrypt" disabled>Decrypt</button>
+        <button class="btn btn-download" id="btnDownload" disabled>↓ Download Output</button>
+      </div>
+    </div>
+ 
+  </div>
+</div>
+ 
+<input type="file" id="fileInput" accept="image/*">
+ 
+<script>
+/* ── State ── */
+let originalImageData = null;
+let outputImageData   = null;
+let currentOp = 'xor';
+ 
+/* ── DOM ── */
+const fileInput     = document.getElementById('fileInput');
+const inputCanvas   = document.getElementById('inputCanvas');
+const outputCanvas  = document.getElementById('outputCanvas');
+const inputWrapper  = document.getElementById('inputWrapper');
+const outputWrapper = document.getElementById('outputWrapper');
+const keyInput      = document.getElementById('keyInput');
+const statusBar     = document.getElementById('statusBar');
+const statusText    = document.getElementById('statusText');
+const btnEncrypt    = document.getElementById('btnEncrypt');
+const btnDecrypt    = document.getElementById('btnDecrypt');
+const btnDownload   = document.getElementById('btnDownload');
+ 
+/* ── Key hashing ── */
+function hashKey(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = (h * 0x01000193) >>> 0;
+  }
+  return h;
+}
+ 
+function seededRand(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 0xffffffff;
+  };
+}
+ 
+function keyByte(str, index) {
+  const h = hashKey(str + index);
+  return h & 0xff;
+}
+ 
+/* ── Pixel Operations ── */
+const ops = {
+ 
+  xor: {
+    encrypt(data, key) {
+      const out = new Uint8ClampedArray(data);
+      const kb = hashKey(key);
+      for (let i = 0; i < out.length; i += 4) {
+        const idx = i / 4;
+        out[i]   ^= (kb ^ (idx * 7 + 13)) & 0xff;
+        out[i+1] ^= (kb ^ (idx * 11 + 31)) & 0xff;
+        out[i+2] ^= (kb ^ (idx * 3 + 57)) & 0xff;
+        // alpha unchanged
+      }
+      return out;
+    },
+    decrypt(data, key) { return ops.xor.encrypt(data, key); } // XOR is symmetric
+  },
+ 
+  invert: {
+    encrypt(data, key) {
+      const out = new Uint8ClampedArray(data);
+      const shift = hashKey(key) % 128;
+      for (let i = 0; i < out.length; i += 4) {
+        out[i]   = (255 - out[i]   + shift) & 0xff;
+        out[i+1] = (255 - out[i+1] + shift) & 0xff;
+        out[i+2] = (255 - out[i+2] + shift) & 0xff;
+      }
+      return out;
+    },
+    decrypt(data, key) {
+      const out = new Uint8ClampedArray(data);
+      const shift = hashKey(key) % 128;
+      for (let i = 0; i < out.length; i += 4) {
+        out[i]   = (255 - ((out[i]   - shift + 256) & 0xff));
+        out[i+1] = (255 - ((out[i+1] - shift + 256) & 0xff));
+        out[i+2] = (255 - ((out[i+2] - shift + 256) & 0xff));
+      }
+      return out;
+    }
+  },
+ 
+  shuffle: {
+    // Key → permutation of [R,G,B]
+    getPerm(key, invert=false) {
+      const perms = [
+        [0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]
+      ];
+      const p = perms[hashKey(key) % 6];
+      if (!invert) return p;
+      // invert permutation
+      const inv = [0,0,0];
+      for (let i=0;i<3;i++) inv[p[i]] = i;
+      return inv;
+    },
+    encrypt(data, key) {
+      const out = new Uint8ClampedArray(data);
+      const p = ops.shuffle.getPerm(key);
+      const src = new Uint8ClampedArray(data);
+      for (let i = 0; i < out.length; i += 4) {
+        out[i]   = src[i + p[0]];
+        out[i+1] = src[i + p[1]];
+        out[i+2] = src[i + p[2]];
+      }
+      return out;
+    },
+    decrypt(data, key) {
+      const out = new Uint8ClampedArray(data);
+      const p = ops.shuffle.getPerm(key, true);
+      const src = new Uint8ClampedArray(data);
+      for (let i = 0; i < out.length; i += 4) {
+        out[i]   = src[i + p[0]];
+        out[i+1] = src[i + p[1]];
+        out[i+2] = src[i + p[2]];
+      }
+      return out;
+    }
+  },
+ 
+  scramble: {
+    getOrder(seed, len, invert=false) {
+      const indices = Array.from({length: len}, (_, i) => i);
+      const rnd = seededRand(seed);
+      // Fisher-Yates
+      for (let i = len-1; i > 0; i--) {
+        const j = Math.floor(rnd() * (i+1));
+        [indices[i], indices[j]] = [indices[j], indices[i]];
+      }
+      if (!invert) return indices;
+      const inv = new Array(len);
+      for (let i=0; i<len; i++) inv[indices[i]] = i;
+      return inv;
+    },
+    encrypt(data, key, width, height) {
+      const rowBytes = width * 4;
+      const out = new Uint8ClampedArray(data.length);
+      const order = ops.scramble.getOrder(hashKey(key), height);
+      for (let r=0; r<height; r++) {
+        const src = order[r] * rowBytes;
+        const dst = r * rowBytes;
+        out.set(data.slice(src, src+rowBytes), dst);
+      }
+      return out;
+    },
+    decrypt(data, key, width, height) {
+      const rowBytes = width * 4;
+      const out = new Uint8ClampedArray(data.length);
+      const order = ops.scramble.getOrder(hashKey(key), height, true);
+      for (let r=0; r<height; r++) {
+        const src = order[r] * rowBytes;
+        const dst = r * rowBytes;
+        out.set(data.slice(src, src+rowBytes), dst);
+      }
+      return out;
+    }
+  },
+ 
+  bitshift: {
+    getShift(key) {
+      return (hashKey(key) % 7) + 1;
+    },
+    rotateLeft(v, n) {
+      n = n % 8;
+      return ((v << n) | (v >> (8 - n))) & 0xff;
+    },
+    rotateRight(v, n) {
+      n = n % 8;
+      return ((v >> n) | (v << (8 - n))) & 0xff;
+    },
+    encrypt(data, key) {
+      const out = new Uint8ClampedArray(data);
+      const sh = parseInt(document.getElementById('sliderShift').value);
+      for (let i=0; i<out.length; i+=4) {
+        out[i]   = ops.bitshift.rotateLeft(out[i],   sh);
+        out[i+1] = ops.bitshift.rotateLeft(out[i+1], sh);
+        out[i+2] = ops.bitshift.rotateLeft(out[i+2], sh);
+      }
+      return out;
+    },
+    decrypt(data, key) {
+      const out = new Uint8ClampedArray(data);
+      const sh = parseInt(document.getElementById('sliderShift').value);
+      for (let i=0; i<out.length; i+=4) {
+        out[i]   = ops.bitshift.rotateRight(out[i],   sh);
+        out[i+1] = ops.bitshift.rotateRight(out[i+1], sh);
+        out[i+2] = ops.bitshift.rotateRight(out[i+2], sh);
+      }
+      return out;
+    }
+  }
+};
+ 
+/* ── UI Helpers ── */
+function setStatus(msg, type='') {
+  statusBar.className = 'status-bar' + (type ? ' '+type : '');
+  statusText.textContent = msg;
+}
+ 
+function loadImage(file) {
+  if (!file || !file.type.startsWith('image/')) {
+    setStatus('Error: please load a valid image file', 'err'); return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const ctx = inputCanvas.getContext('2d');
+      inputCanvas.width = img.width;
+      inputCanvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+      originalImageData = ctx.getImageData(0, 0, img.width, img.height);
+ 
+      inputWrapper.classList.add('has-image');
+      document.getElementById('fileInfo').style.display = 'flex';
+      document.getElementById('chipDims').textContent = `${img.width}×${img.height}`;
+      document.getElementById('chipType').textContent = file.type.replace('image/','').toUpperCase();
+      document.getElementById('chipSize').textContent = (file.size/1024).toFixed(1)+'KB';
+ 
+      btnEncrypt.disabled = false;
+      btnDecrypt.disabled = false;
+      setStatus(`Loaded: ${file.name} (${img.width}×${img.height}px)`, 'ok');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+ 
+function runOp(mode) {
+  if (!originalImageData) { setStatus('No image loaded', 'err'); return; }
+  const key = keyInput.value.trim();
+  if (!key) { setStatus('Enter an encryption key first', 'err'); return; }
+ 
+  setStatus(`${mode === 'encrypt' ? 'Encrypting' : 'Decrypting'} with ${currentOp}...`, 'busy');
+ 
+  setTimeout(() => {
+    try {
+      const src = originalImageData.data;
+      const w = originalImageData.width;
+      const h = originalImageData.height;
+      let outData;
+ 
+      if (currentOp === 'scramble') {
+        outData = ops[currentOp][mode](src, key, w, h);
+      } else {
+        outData = ops[currentOp][mode](src, key);
+      }
+ 
+      outputCanvas.width = w;
+      outputCanvas.height = h;
+      const ctx = outputCanvas.getContext('2d');
+      const imgData = new ImageData(outData, w, h);
+      ctx.putImageData(imgData, 0, 0);
+      outputWrapper.classList.add('has-image');
+      outputImageData = imgData;
+ 
+      btnDownload.disabled = false;
+      setStatus(`Done — ${mode === 'encrypt' ? 'Encrypted' : 'Decrypted'} via ${currentOp}`, 'ok');
+    } catch (err) {
+      setStatus('Processing error: ' + err.message, 'err');
+    }
+  }, 30);
+}
+ 
+/* ── Events ── */
+fileInput.addEventListener('change', e => loadImage(e.target.files[0]));
+ 
+inputWrapper.addEventListener('click', () => {
+  if (!inputWrapper.classList.contains('has-image'))
+    document.getElementById('fileInput').click();
+});
+ 
+['dragover','dragenter'].forEach(ev =>
+  inputWrapper.addEventListener(ev, e => { e.preventDefault(); inputWrapper.classList.add('drag-over'); })
+);
+['dragleave','drop'].forEach(ev =>
+  inputWrapper.addEventListener(ev, e => { e.preventDefault(); inputWrapper.classList.remove('drag-over'); })
+);
+inputWrapper.addEventListener('drop', e => {
+  const f = e.dataTransfer.files[0];
+  if (f) loadImage(f);
+});
+ 
+document.getElementById('opsGrid').querySelectorAll('.op-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.op-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+    currentOp = card.dataset.op;
+    document.getElementById('paramShift').classList.toggle('visible', currentOp === 'bitshift');
+  });
+});
+ 
+btnEncrypt.addEventListener('click', () => runOp('encrypt'));
+btnDecrypt.addEventListener('click', () => runOp('decrypt'));
+ 
+btnDownload.addEventListener('click', () => {
+  const link = document.createElement('a');
+  link.download = `pixlcrypt_output_${currentOp}.png`;
+  link.href = outputCanvas.toDataURL('image/png');
+  link.click();
+});
+ 
+document.getElementById('randBtn').addEventListener('click', () => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+  let k = '';
+  for (let i=0; i<12; i++) k += chars[Math.floor(Math.random()*chars.length)];
+  keyInput.value = k;
+});
+ 
+const slider = document.getElementById('sliderShift');
+slider.addEventListener('input', () => {
+  document.getElementById('valShift').textContent = slider.value;
+});
+</script>
+</body>
+</html>

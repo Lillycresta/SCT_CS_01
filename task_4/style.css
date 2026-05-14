@@ -1,0 +1,230 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+@keyframes gradientShift {
+    0% {
+        background: linear-gradient(135deg, #ff006e, #fb5607);
+    }
+    25% {
+        background: linear-gradient(135deg, #fb5607, #ffbe0b);
+    }
+    50% {
+        background: linear-gradient(135deg, #ffbe0b, #8338ec);
+    }
+    75% {
+        background: linear-gradient(135deg, #8338ec, #3a86ff);
+    }
+    100% {
+        background: linear-gradient(135deg, #3a86ff, #ff006e);
+    }
+}
+
+body {
+    background: linear-gradient(135deg, #ff006e, #fb5607);
+    color: white;
+    min-height: 100vh;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 20px;
+    
+    animation: gradientShift 15s ease infinite;
+    background-size: 400% 400%;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.container {
+    width: 90%;
+    max-width: 700px;
+
+    background: rgba(255, 255, 255, 0.15);
+
+    padding: 30px;
+    border-radius: 20px;
+
+    backdrop-filter: blur(10px);
+
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+    
+    animation: slideIn 0.8s ease-out, float 3s ease-in-out infinite;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+@keyframes pulse {
+    0%, 100% {
+        text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    }
+    50% {
+        text-shadow: 0 0 20px rgba(255, 255, 255, 0.8), 0 0 30px rgba(255, 0, 110, 0.8);
+    }
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 10px;
+    animation: pulse 2s ease-in-out infinite;
+    font-size: 2.5em;
+    font-weight: bold;
+}
+
+.subtitle {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #d3d3d3;
+}
+
+@keyframes textareaBorder {
+    0%, 100% {
+        border: 2px solid #3a86ff;
+        box-shadow: 0 0 10px rgba(58, 134, 255, 0.5);
+    }
+    50% {
+        border: 2px solid #ff006e;
+        box-shadow: 0 0 20px rgba(255, 0, 110, 0.8);
+    }
+}
+
+textarea {
+    width: 100%;
+    height: 150px;
+
+    padding: 15px;
+
+    border: 2px solid #3a86ff;
+    border-radius: 10px;
+
+    resize: none;
+
+    font-size: 16px;
+
+    margin-bottom: 20px;
+    
+    background: rgba(58, 134, 255, 0.1);
+    color: white;
+    animation: textareaBorder 3s ease-in-out infinite;
+    transition: 0.3s;
+}
+
+textarea:focus {
+    outline: none;
+    background: rgba(58, 134, 255, 0.2);
+}
+
+.buttons {
+    display: flex;
+    gap: 15px;
+
+    margin-bottom: 20px;
+}
+
+@keyframes buttonGlow1 {
+    0%, 100% {
+        background: linear-gradient(135deg, #ff006e, #fb5607);
+        box-shadow: 0 0 15px rgba(255, 0, 110, 0.6);
+    }
+    50% {
+        background: linear-gradient(135deg, #fb5607, #ff006e);
+        box-shadow: 0 0 25px rgba(251, 86, 7, 0.8);
+    }
+}
+
+@keyframes buttonGlow2 {
+    0%, 100% {
+        background: linear-gradient(135deg, #3a86ff, #8338ec);
+        box-shadow: 0 0 15px rgba(58, 134, 255, 0.6);
+    }
+    50% {
+        background: linear-gradient(135deg, #8338ec, #3a86ff);
+        box-shadow: 0 0 25px rgba(131, 56, 236, 0.8);
+    }
+}
+
+button {
+    flex: 1;
+
+    padding: 12px;
+
+    border: none;
+    border-radius: 10px;
+
+    cursor: pointer;
+
+    font-size: 16px;
+    font-weight: bold;
+
+    transition: 0.3s;
+}
+
+#clearBtn {
+    background: linear-gradient(135deg, #ff006e, #fb5607);
+    color: white;
+    animation: buttonGlow1 2s ease-in-out infinite;
+}
+
+#downloadBtn {
+    background: linear-gradient(135deg, #3a86ff, #8338ec);
+    color: white;
+    animation: buttonGlow2 2s ease-in-out infinite;
+}
+
+button:hover {
+    transform: scale(1.08);
+}
+
+@keyframes boxGlow {
+    0%, 100% {
+        border: 2px solid #ffbe0b;
+        box-shadow: 0 0 15px rgba(255, 190, 11, 0.5);
+        background: rgba(255, 190, 11, 0.05);
+    }
+    50% {
+        border: 2px solid #8338ec;
+        box-shadow: 0 0 25px rgba(131, 56, 236, 0.8);
+        background: rgba(131, 56, 236, 0.1);
+    }
+}
+
+.log-box {
+    background: rgba(0,0,0,0.3);
+
+    padding: 20px;
+    border-radius: 10px;
+
+    min-height: 120px;
+    
+    animation: boxGlow 3s ease-in-out infinite;
+    border: 2px solid #ffbe0b;
+}
+
+#logs {
+    margin-top: 10px;
+    line-height: 1.6;
+
+    word-wrap: break-word;
+    font-weight: 500;
+}
